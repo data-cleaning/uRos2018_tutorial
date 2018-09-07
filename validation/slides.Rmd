@@ -1,0 +1,285 @@
+---
+title: "The statistical value chain and data validation"
+author: "Mark van der Loo and Edwin de Jonge"
+date: "uRos2018 Tutorial Session, The Hague"
+output: 
+  beamer_presentation:
+    fig_caption: FALSE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# The Statistical Value Chain
+
+## Value Chains
+
+### Porter's value chain (1985)
+
+_The idea of the value chain is based on the process view of organizations, the idea of seeing a manufacturing (or service) organization as a system, made up of subsystems each with inputs, transformation processes and outputs._
+
+
+## Statistical Value Chain
+
+\begin{center}
+\includegraphics[height=3cm]{fig/valuechain.pdf}
+\end{center}
+
+
+### Notes
+
+- This part only pertains to the data processing stage. Collection, design,
+dissemination is not included.
+- The fixed points are well-defined statistical products.
+
+
+## Stages in the SVC
+
+1. **Raw Data** is data as it arrives
+    - Can differ in quality/source: survey/admin/big data
+2. **Input data** satisfies technical demands:
+    - File type is known and can be read
+    - Variables are of correct type (number/date/text/categorical$...$)
+    - Records identified with statistical objects
+    - Variables identified with statistical properties
+
+
+## Stages in the SVC
+
+3. **Valid data** satisfies domain knowledge constraints
+    - Age cannot be negative
+    - Someone under 15 yrs old cannot have income from work
+    - mean economic growth/decline does not exceed 5\% in a certain sector
+    - $...$
+    
+### Justification
+
+Invalid data leads to invalid statistical results.
+
+
+## Stages in the SVC
+
+4. **Statistics** are the target output values (aggregates) describing the population
+characteristic of interest.
+    - Economic growth
+    - Unemployment
+    - Income distribution
+    - GDP
+    - $\ldots$
+
+### Note
+
+Statistics also need to satisfy domain knowledge constraints.
+
+
+## Stages in the SVC
+
+5. **Output** are statistics, formatted and annotated for publication
+    - Figures, tables
+    - Definitions
+    - $..$
+
+
+## The SVC: Remarks
+
+- Actual data processing is not necessarily linear accross the chain
+- In production architectures a more flexible model is often used where
+the definition of interfaces between processing steps play a crucial role.
+The chain shown here is a general example covering most steps in some way.
+
+
+## Data validation
+
+### Definition (ESS handbook on validation)
+
+_Data validation is an activity in which it is verified whether or not a
+combination of values is a member of a set of acceptable value combinations._
+
+### Validation rules
+
+The set of acceptable values combinations are defined by 
+_validation rules_, e.g. `IF age <= 14 THEN has_job == "no"`.
+
+### Observe
+
+_validation rules define, to large extend, the products in the SVC_
+
+
+## `validate`: _data validation infrastructure for R_
+
+### A domain-specific language for rule definition
+
+Define _any_ check on your data, using the _full power_ of the R 
+languge.
+
+### Rules as first-class citizens
+
+- CRUD operations (create, read, update, delete)
+- Summarize, plot, investigate rules
+- Rich metadata
+
+### Validate data
+
+- Confront data with rules
+- CRUD on results, summarize, plot
+- Export to ESS standard reporting format (upcoming)
+
+
+
+## Data validation with `validate`
+
+\scriptsize{}
+```{r}
+library(validate)
+data(retailers)
+head(retailers,3)[3:7]
+```
+\normalfont{}
+
+
+## Data validation with `validate`
+
+\scriptsize{}
+```{r}
+rules <- validator(staff >= 0, turnover >= 0, other.rev >= 0
+  , turnover + other.rev == total.rev
+  , if (staff >= 1) staff.costs >= 1
+)
+
+out <- confront(retailers, rules)
+summary(out)
+```
+\normalfont{}
+
+## Plotting output
+
+\scriptsize{}
+```{r}
+plot(out)
+```
+\normalfont{}
+
+
+## The validate package
+
+![](fig/overview.pdf)
+
+
+## Reading rules from file
+
+```{r, eval=FALSE}
+### myrulez.txt
+
+# some basic checks
+staff >= 0
+turnover >= 0 
+other.rev >= 0
+# account balance checks
+turnover + other.rev == total.rev
+# other commom sense stuff
+if (staff >= 1) staff.costs >= 1
+```
+
+```{r,eval=FALSE}
+rulez <- validator(.file="myrulez.txt")
+```
+
+## Domain Specific Language
+
+### Validation DSL
+
+Any R statement resulting in a `logical`.
+
+### Examples
+
+```{r, eval=FALSE}
+# Range checks
+has_job %in% c('yes','no')
+turnover >= 0
+# Multivariate checks
+abs(profit) <= 0.6 * turnover
+# Multi-row checks
+mean(profit) > 10
+# Logical implications
+if (staff > 0) staff.costs > 0
+```
+
+## Validation DSL
+
+### Comparisons
+
+`>, >=,==, <=, <, %in%`
+
+### Boolean operations
+
+`!, all(), any(), &, &&, |, ||, if () else`
+
+### Text search
+
+`grepl`
+
+
+### Functional dependencies (Armstrong)
+
+`city + zipcode ~ streetname`
+
+### Refer to the dataset with `.`
+
+`nrow(.) == 40`, `"turnover" %in% names(.)`
+
+## Transient assignments (macros) using `:=`
+
+### Example 1
+
+$$
+\max\left(\frac{x}{x^*},\frac{x^*}{x}\right) \leq 10
+$$
+
+```{r, eval=FALSE}
+med := median(turnover,na.rm=TRUE)
+hb := pmax(turnover/med, med/turnover, na.rm=TRUE)
+hb <= 10
+```
+
+### Example 2
+
+```{r,eval=FALSE}
+beta_2 := coefficients(lm(turnover ~ profit))[2]
+beta_2 >= 0
+```
+
+
+## Variable groups
+
+### Many variables, same rule
+
+```{r, eval=FALSE}
+G := var_group(staff, turnover, other.rev, total.costs)
+G >= 0
+```
+
+
+## Assignment
+
+1. Create a new textfile
+2. Define 10 rules for the `retailers` dataset
+3. Read the rules (`validator(.file="your file")`)
+4. `confront` rules with data
+5. Summarize and plot the results.
+6. Use `as.data.frame` and `View` to convert and display the results.
+
+
+
+## Error handling
+
+```{r}
+out <- check_that(women, hite > 0, weight>0)
+out
+errors(out)
+```
+
+
+
+
