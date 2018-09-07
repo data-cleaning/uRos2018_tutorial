@@ -112,7 +112,7 @@ _validation rules define, to large extend, the products in the SVC_
 ### A domain-specific language for rule definition
 
 Define _any_ check on your data, using the _full power_ of the R 
-languge.
+language.
 
 ### Rules as first-class citizens
 
@@ -126,6 +126,35 @@ languge.
 - CRUD on results, summarize, plot
 - Export to ESS standard reporting format (upcoming)
 
+## Assignment 1
+
+Try the following code.
+
+```{r, results='hide'}
+library(validate)
+library(magrittr)
+data(retailers)
+head(retailers)
+retailers %>%
+  check_that(turnover + other.rev == total.rev
+             , turnover > 0, other.rev > 0 ) %>%
+  summary()
+```
+
+## Assignment 1
+
+
+\scriptsize{}
+```{r}
+library(validate)
+library(magrittr)
+data(retailers) 
+retailers %>%
+  check_that(turnover + other.rev == total.rev
+             , turnover > 0, other.rev > 0 ) %>%
+  summary()
+```
+\normalfont{}
 
 
 ## Data validation with `validate`
@@ -141,17 +170,26 @@ head(retailers,3)[3:7]
 
 ## Data validation with `validate`
 
-\scriptsize{}
-```{r}
-rules <- validator(staff >= 0, turnover >= 0, other.rev >= 0
+
+```{r,results='hide'}
+rules <- validator(
+   turnover >= 0
+  , other.rev >= 0
   , turnover + other.rev == total.rev
-  , if (staff >= 1) staff.costs >= 1
 )
 
 out <- confront(retailers, rules)
 summary(out)
 ```
-\normalfont{}
+
+
+## Assignment 2
+
+1. Adapt the previous exercise so you use `validator`.
+2. Use `confront` for validation and store the results in a variable called `out`.
+3. Try `plot(out)`.
+4. Try `as.data.frame(out)` (use `View` to inspect the result)
+
 
 ## Plotting output
 
@@ -260,18 +298,6 @@ G := var_group(staff, turnover, other.rev, total.costs)
 G >= 0
 ```
 
-
-## Assignment
-
-1. Create a new textfile
-2. Define 10 rules for the `retailers` dataset
-3. Read the rules (`validator(.file="your file")`)
-4. `confront` rules with data
-5. Summarize and plot the results.
-6. Use `as.data.frame` and `View` to convert and display the results.
-
-
-
 ## Error handling
 
 ```{r}
@@ -281,5 +307,48 @@ errors(out)
 ```
 
 
+## Assignment 3
 
+1. Create a new textfile
+2. Define 10 rules for the `retailers` dataset
+3. Read the rules (`validator(.file="your file")`)
+4. `confront` rules with data
+5. Summarize and plot the results.
+6. Use `as.data.frame` and `View` to convert and display the results.
+
+
+## Naming rules
+
+```{r}
+rules <- validator(
+  to_pos = turnover >= 0
+  , or_pos = other.revenue >= 0
+  , balance = turnover + other.rev == total.rev)
+rules
+```
+
+## Rule selection
+
+```{r}
+rules[1:2]
+rules["balance"]
+```
+
+## Rule metadata
+
+```{r}
+rules[[3]]
+```
+
+## Export rules & metadata to and import from `data.frame`
+
+### Create data frame
+```{r}
+rules_df <- as.data.frame(rules)
+```
+
+### Read from data frame
+```{r}
+myrules <- validator(.data = rules_df)
+```
 
