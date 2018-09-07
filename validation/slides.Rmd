@@ -315,6 +315,7 @@ errors(out)
 4. `confront` rules with data
 5. Summarize and plot the results.
 6. Use `as.data.frame` and `View` to convert and display the results.
+7. Make a `plot` of the `validator` object.
 
 
 ## Naming rules
@@ -322,7 +323,7 @@ errors(out)
 ```{r}
 rules <- validator(
   to_pos = turnover >= 0
-  , or_pos = other.revenue >= 0
+  , or_pos = other.rev >= 0
   , balance = turnover + other.rev == total.rev)
 rules
 ```
@@ -340,6 +341,12 @@ rules["balance"]
 rules[[3]]
 ```
 
+## More manipulation: combining rule sets
+
+```{r}
+validator(x > 0) + validator(x <= 1)
+```
+
 ## Export rules & metadata to and import from `data.frame`
 
 ### Create data frame
@@ -351,4 +358,27 @@ rules_df <- as.data.frame(rules)
 ```{r}
 myrules <- validator(.data = rules_df)
 ```
+
+## Setting options
+
+### Global options
+```{r}
+# stop at error instead of catching
+voptions(raise="all")
+```
+
+### Options per object
+
+```{r}
+# value to replace NA outcomes
+voptions(rules, na.value=FALSE)
+```
+
+### When confronting data with rules
+```{r}
+out <- confront(retailers, rules
+        , lin.eq.eps=1e-2 )
+```
+
+
 
