@@ -1,0 +1,325 @@
+---
+title: "An introduction to imputation"
+author: "Mark van der Loo and Edwin de Jonge"
+date: "uRos2018"
+output:
+  beamer_presentation:
+    fig_caption: false
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+## Missing data
+
+\begin{center}
+\includegraphics[height=\textheight]{fig/missingvalue.pdf}
+\end{center}
+
+## Missing data
+
+### Reasons
+
+- nonresponse, data loss
+- Value is observed but deemed wrong and erased
+
+### Oplossingen
+
+- Measure/observe again 
+- Ignore
+- Take into account when estimating
+- **Impute**
+
+## Missing data mechanisms
+
+### Missing comletely at Random (MCAR)
+
+Missingness is totally random.
+
+### Missing at Random (MAR)
+
+Missingness probability can be modeled by other variables
+
+### Not Missing at Random (NMAR)
+
+Missingness probability depends on missing value.
+
+
+## Dealing with missing data mechanisms
+
+### Missing comletely at Random (MCAR)
+
+Model-based imputation
+
+### Missing at Random (MAR)
+
+Model-based imputation
+
+### Not Missing at Random (NMAR)
+
+No real solution.
+
+
+## Imputation methodology
+
+### Model based
+
+Estimate a value based on observed variables.
+
+### Donor-imputation
+
+Copy a value from a record that you did observe.
+
+
+## The simputation package
+
+### Provide
+
+- a _uniform interface_,
+- with _consistent behaviour_,
+- across _commonly used methodologies_
+
+
+### To facilitate
+
+- experimentation 
+- configuration for production
+
+
+
+## Assignment 1: Try the following code
+
+
+```{r, results='hide'}
+library(simputation)
+data(retailers,package="validate")
+ret <- retailers[3:6]
+ret %>% impute_lm(other.rev ~ turnover) %>% head()
+```
+
+
+## Assignment 1: Try the following code
+
+```{r}
+library(simputation)
+data(retailers,package="validate")
+ret <- retailers[3:6]
+ret %>% impute_lm(other.rev ~ turnover) %>% head()
+```
+
+
+## Assignment 2: Try the following code
+
+```{r,results='hide'}
+# note the 'rlm'!
+ret %>% impute_rlm(other.rev ~ turnover) %>% head()
+```
+
+
+## Assignment 2: Try the following code
+
+```{r}
+# note the 'rlm'!
+ret %>% impute_rlm(other.rev ~ turnover) %>% head()
+```
+
+## The `simputation` package
+
+### An imputation prodedure is specified by
+
+1. The variable to impute
+2. An imputation model
+3. Predictor variables
+
+
+
+### The simputation interface
+
+```
+impute_<model>(data
+  , <imputed vars> ~ <predictor vars>
+  , [options])
+```
+
+## Installation
+
+```{r, eval=FALSE}
+install.packages("simputation", dependencies = TRUE)
+```
+
+
+## Chaining methods
+
+```{r}
+ret %>% 
+  impute_rlm(other.rev ~ turnover) %>%
+  impute_rlm(other.rev ~ staff) %>% head()
+```
+
+
+## Assignment 3
+
+Adapt this code so `turnover` is imputed, based on turnover and staff.
+
+```{r,results='hide'}
+ret %>% 
+  impute_rlm(other.rev ~ turnover) %>%
+  impute_rlm(other.rev ~ staff) %>% head()
+```
+
+## (One) solution
+
+
+
+```{r,results='hide'}
+ret %>% 
+  impute_rlm(other.rev ~ turnover) %>%
+  impute_rlm(other.rev ~ staff) %>% 
+  impute_rlm(turnover ~ staff + other.rev) %>% head()
+```
+
+
+
+
+## Example: Multiple variables, same predictors
+
+```{r,eval=FALSE}
+ret %>% 
+  impute_rlm(other.rev + total.rev ~ turnover) 
+
+ret %>% 
+  impute_rlm( . - turnover ~ turnover) 
+```
+
+## Example: grouping
+
+```{r, eval=FALSE}
+retailers %>% impute_rlm(total.rev ~ turnover | size) 
+
+# or, using dplyr::group_by
+retailers %>% 
+  group_by(size) %>%
+  impute_rlm(total.rev ~ turnover)
+```
+
+
+## Currently available methods
+
+- Model based (optional random residual):
+    - standard/$M$/elasticnet regression 
+    - CART models and Random forest
+- Multivariate
+    - EM-based imputation
+    - missForest (=iterative random forest)
+- Donor imputation (including various donor pool specifications)
+    - k-nearest neigbour (based on [gower](https://cran.r-project.org/package=gower)'s distance)
+    - sequential, random hotdeck
+    - Predictive mean matching
+- Other
+    - (groupwise) median imputation (optional random residual)
+    - Proxy imputation: copy another variable or use a simple transformation
+      to compute imputed values.
+
+
+
+## Imputation and univariate distribution
+
+```{r,echo=FALSE}
+set.seed(1)
+x <- rnorm(1000)
+y <- x
+i <- sample(1:1000,100,replace=FALSE)
+x[i] <- NA
+par(mfrow=c(3,1))
+hist(y,main="true data",breaks=50,las=1)
+hist(x,main="10% missing values", breaks=50,las=1)
+x[i] <- mean(x,na.rm=TRUE)
+hist(x,main="Imputating the mean",breaks=50,las=1)
+```
+
+## Imputation and bivariate distribution
+
+```{r,echo=FALSE}
+par(mfrow=c(1,2))
+X <- rnorm(1000)
+Y <- X + rnorm(1000,sd = 0.2)
+i <- sample(1:1000,100,replace=FALSE)
+Y[i] <- NA
+plot(X,Y,pch=".",main="10% missing in Y", las=1)
+d <- data.frame(X=X,Y=Y)
+library(simputation)
+d1 <- impute_lm(d,Y ~ X)
+cols <- rep("black",1000)
+cols[i] <- "red"
+cex <- rep(1,1000)
+cex[i] <- 4
+plot(Y ~ X, data=d1, col=cols,pch=".",cex=cex,las=1,main="Imputation with model Y = a + bX")
+```
+
+## Adding a random residual
+
+$$
+\hat{y}_i = \hat{f}(X_i) + \varepsilon_i
+$$
+
+- $\hat{y}_i$ estimated value for record $i$
+- $\hat{f}(X_i)$ model value
+- $\varepsilon_i$ random perturbation
+    - Either a residual from the model training
+    - OR sampled from $N(0,\hat{\sigma})$
+
+\begin{itemize}
+\item[$+$] Better (multivariate) distribution
+\item[$-$] Less reproducible
+\end{itemize}
+
+
+## Adding a random residual
+
+
+```{r, echo=FALSE}
+par(mfrow=c(1,2))
+cols <- rep("black",1000)
+cols[i] <- "red"
+cex <- rep(1,1000)
+cex[i] <- 3
+plot(Y ~ X, data=d1, col=cols,pch=".",cex=cex,las=1,main="Imputation with model Y = a + bX")
+
+d2 <- impute_lm(d,Y ~ X,add_residual = "normal")
+plot(Y ~ X, data=d2, col=cols,pch=".",cex=cex,las=1,main="Imputation met Y = a + bX + e")
+```
+
+## Adding a residual with `simputation`
+
+### Try the following code
+
+```{r, results='hide'}
+ret %>%
+  impute_lm(other.rev ~ turnover
+    , add_residual = "normal") %>% head(3)
+```
+
+### Options
+
+- `add_residual = "none"`: (default)
+- `add_residual = "normal"`: from $N(0,\hat{\sigma})$ 
+- `add_residual = "observed"`: from observed residuals
+
+
+## Assignment 4
+
+Read in the `irisNA.csv` dataset.
+
+1. Use `impute_knn` to impute `Sepal.Length` and `Sepal.Width`. Use
+`Petal.Length`, `Petal.Width` and `Species` as predictor.
+2. Use a `CART` model to impute `Sepal.Length` with all other variables
+as predictors (see `?impute_cart`)
+3. Use `impute_lm` to impute the mean for `Sepal.Length` (the rhs of the 
+model is `~ 1`).
+
+
+
