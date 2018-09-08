@@ -8,7 +8,6 @@ output:
 ---
 
 
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
@@ -27,7 +26,7 @@ library(tidyverse)
 - nonresponse, data loss
 - Value is observed but deemed wrong and erased
 
-### Oplossingen
+### Solutions
 
 - Measure/observe again 
 - Ignore
@@ -47,6 +46,22 @@ Missingness probability can be modeled by other variables
 ### Not Missing at Random (NMAR)
 
 Missingness probability depends on missing value.
+
+
+## You can't tell the mechanism from the data
+
+### NMAR can look like MCAR
+
+Given $Y,X$ independent. Remove all $y\geq y^*$. Observer
+'sees' no correlation between missingness and values of $X$: MAR.
+
+
+### NMAR can look like MAR
+
+Given $Y,X$ with $\textsf{Cov}(Y,X)>0$. Remove all 
+$y\geq y^*$. Observer 'sees' that higher $X$ correlates with
+more missings in $Y$: MCAR.
+
 
 
 ## Dealing with missing data mechanisms
@@ -93,7 +108,13 @@ Copy a value from a record that you did observe.
 
 ## Assignment 1: Try the following code
 
+### Installation
 
+```{r, eval=FALSE}
+install.packages("simputation", dependencies = TRUE)
+```
+
+### Code to try
 ```{r, results='hide'}
 library(simputation)
 data(retailers,package="validate")
@@ -143,12 +164,6 @@ ret %>% impute_rlm(other.rev ~ turnover) %>% head()
 impute_<model>(data
   , <imputed vars> ~ <predictor vars>
   , [options])
-```
-
-## Installation
-
-```{r, eval=FALSE}
-install.packages("simputation", dependencies = TRUE)
 ```
 
 
@@ -206,23 +221,6 @@ retailers %>%
   impute_rlm(total.rev ~ turnover)
 ```
 
-
-## Currently available methods
-
-- Model based (optional random residual):
-    - standard/$M$/elasticnet regression 
-    - CART models and Random forest
-- Multivariate
-    - EM-based imputation
-    - missForest (=iterative random forest)
-- Donor imputation (including various donor pool specifications)
-    - k-nearest neigbour (based on [gower](https://cran.r-project.org/package=gower)'s distance)
-    - sequential, random hotdeck
-    - Predictive mean matching
-- Other
-    - (groupwise) median imputation (optional random residual)
-    - Proxy imputation: copy another variable or use a simple transformation
-      to compute imputed values.
 
 
 
@@ -299,9 +297,10 @@ plot(Y ~ X, data=d2, col=cols,pch=".",cex=cex,las=1,main="Imputation met Y = a +
 
 ```{r, results='hide'}
 ret %>%
-  impute_lm(other.rev ~ turnover
+  impute_rlm(other.rev ~ turnover
     , add_residual = "normal") %>% head(3)
 ```
+
 
 ### Options
 
@@ -309,6 +308,192 @@ ret %>%
 - `add_residual = "normal"`: from $N(0,\hat{\sigma})$ 
 - `add_residual = "observed"`: from observed residuals
 
+Compute the variance of `other.rev` after each option.
+
+
+# Five minutes for ten models.
+
+## 1. Impute a proxy
+
+$$
+\hat{\boldsymbol{y}} = \boldsymbol{x}\textrm{ or } \boldsymbol{y} = f(\boldsymbol{x}),
+$$
+where $\boldsymbol{x}$ is another (proxy) variable (e.g. VAT value for turnover),
+and $f$ a user-defined (optional) transformation.
+
+```{r,eval=FALSE}
+# simputation
+impute_proxy()
+```
+
+## 2. Linear model
+
+$$
+\hat{\boldsymbol{y}} = \boldsymbol{X}\hat{\boldsymbol{\beta}},
+$$
+where
+$$
+\hat{\boldsymbol{\beta}} 
+=\arg\min_{\boldsymbol{\beta}}\sum_i\epsilon_i^2
+%= \arg\min_{\boldsymbol{\beta}}\|\boldsymbol{Y}-\boldsymbol{X\beta}\|^2
+$$
+```{r,eval=FALSE}
+# simputation:
+impute_lm()
+```
+
+
+## 3. Regularized linear model (elasticnet)
+
+$$
+\hat{\boldsymbol{y}} = \boldsymbol{X}\hat{\boldsymbol{\beta}},
+$$
+
+where
+$$
+\hat{\boldsymbol{\beta}} = \arg\min_{\boldsymbol{\beta}}
+\frac{1}{2}\sum_i\epsilon_i^2 + 
+\lambda\left[
+\frac{1-\alpha}{2}\|\boldsymbol{\beta}^*\|^2 + \alpha\|\boldsymbol{\beta}^*\|_1
+\right]
+$$
+
+- $\alpha=0$ (Lasso) $\cdots$ $\alpha=1$ (Ridge)
+- $\boldsymbol{\beta}^*$: $\boldsymbol{\beta}$ w/o intercept.
+
+```{r,eval=FALSE}
+# simputation:
+impute_en()
+```
+
+
+## 4. $M$-estimator
+
+$$
+\hat{\boldsymbol{y}} = \boldsymbol{X}\hat{\boldsymbol{\beta}},
+$$
+where
+$$
+\hat{\boldsymbol{\beta}} = \arg\min_{\boldsymbol{\beta}}\sum_i\rho(\epsilon_i)
+$$
+
+```{r, eval=FALSE}
+# simputation:
+impute_rlm()
+```
+
+\begin{picture}(0,0)
+\put(210,-20){
+\includegraphics[height=3.5cm]{fig/psifun.pdf}
+}
+\end{picture}
+
+## 5. Classification and regression tree (CART)
+
+$$
+\hat{\boldsymbol{y}} = T(\boldsymbol{X}),
+$$
+
+where $T$ represents a set of binary questions on variables in $\boldsymbol{X}$.
+There are spare questions for when one of the predictors is missing.
+
+
+```{r,eval=FALSE}
+# simputation:
+impute_cart()
+```
+
+\begin{picture}(0,0)
+\put(210,-30){
+\includegraphics[height=3.5cm]{fig/rpart2.pdf}
+}
+\end{picture}
+
+## 6. Random forest
+
+$$
+\hat{\boldsymbol{y}} = \frac{1}{|\textrm{Forest}|}\sum_{i\in\textrm{Forest}}T_i(\boldsymbol{X}),
+$$
+where each $T_i$ is a simple decision tree without spare questions. For categorical
+$\boldsymbol{y}$, the majority vote is chosen.
+
+```{r, eval=FALSE}
+# simputation
+impute_rf()
+```
+
+## 7. Expectation-Maximization
+
+Dataset $\boldsymbol{X}=\boldsymbol{X}_{obs}\cup\boldsymbol{X}_{mis}$. Assume $\boldsymbol{X}\sim P(\boldsymbol{\theta})$.
+
+1. Choose a $\hat{\boldsymbol{\theta}}$.
+2. Repeat until convergence:
+    a. $Q(\boldsymbol{\theta}|\hat{\boldsymbol{\theta}}) = \ell(\boldsymbol{\theta}|\boldsymbol{X}_{obs})+E_{mis}[\ell(\boldsymbol{X}_{mis}|\boldsymbol{\theta},\boldsymbol{X}_{obs})|\hat{\boldsymbol{\theta}}]$
+    b. $\hat{\boldsymbol{\theta}}=\arg\max_{\boldsymbol{\theta}}Q(\boldsymbol{\theta}|\hat{\boldsymbol{\theta}})$
+3. $\hat{\boldsymbol{X}}_{mis}=\arg\max_{\boldsymbol{X}_{mis}}P(\boldsymbol{X}_{mis}|\hat{\boldsymbol{\theta}})$
+
+```{r, eval=FALSE}
+# simputation (multivariate normal):
+impute_em()
+```
+
+## 8. `missForest`
+
+Dataset $\boldsymbol{X}=\boldsymbol{X}_{obs}\cup\boldsymbol{X}_{mis}$.
+
+1. Trivial imputation of $\boldsymbol{X}_{mis}$ (median for numeric variables, mode for categorical variables)
+2. Repeat until convergence:
+    a. Train random forest models on the completed data
+    b. Re-impute based on these models.
+    
+```{r, eval=FALSE}
+# simputation:
+impute_mf()
+```
+
+## 9.a Random hot deck
+
+1. Split the data records into groups (optional)
+2. Impute missing values by copying a value from a random record in the same group
+
+```{r, eval=FALSE}
+# simputation
+impute_rhd(data, imputed_variables ~ grouping_variables)
+```
+
+## 9.b Sequential hot-deck
+
+1. Sort the dataset
+2. For each row in the sorted dataset, impute missing values from the last observed.
+
+```{r,eval=FALSE}
+# simputation
+impute_shd(data, imputed_variables ~ sorting_variables)
+```
+
+## 9.c $k$-nearest neighbours
+
+For each record with one or more missings:
+
+1. Find the $k$ nearest neighbours (Gower's distance) with observed values
+2. Sample value(s) from the $k$ records.
+
+```{r,eval=FALSE}
+# simputation
+impute_knn(data, imputed_variables ~ distance_variables)
+```
+
+## 10. Predictive mean matching
+
+1. For each variable $X_i$ with missing values, estimate a model $\hat{f}_i$.
+2. Estimate all values, observed or not.
+3. For each missing value, impute the observed value, of which the prediction
+is closest to the prediction of the missing value.
+
+```{r, eval=FALSE}
+# simputation: (currently buggy!)
+impute_pmm()
+```
 
 ## Assignment 4
 
@@ -320,6 +505,7 @@ Read in the `irisNA.csv` dataset.
 as predictors (see `?impute_cart`)
 3. Use `impute_lm` to impute the mean for `Sepal.Length` (the rhs of the 
 model is `~ 1`).
+
 
 
 
