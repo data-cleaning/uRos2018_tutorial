@@ -1,0 +1,322 @@
+---
+title: "Finding and handling data errors"
+subtitle: "errorlocate" 
+author: "Edwin de Jonge and Mark van der Loo"
+date: "uRos2018 Tutorial Session, The Hague"
+output:
+  beamer_presentation:
+    keep_tex: no
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+library(errorlocate)
+library(magrittr)
+```
+
+## Packages
+
+To run the examples please install:
+
+```{r}
+install.packages("errorlocate")
+```
+
+## Finding errors in records.
+
+\begin{center}
+\includegraphics[width=\textwidthx]{fig/valuechain}
+\end{center}
+
+## Validation rules?
+
+As we saw package `validate` allows to:
+
+- formulate explicit data rule that data must conform to:
+
+```{r}
+library(validate)
+rules <- validator(
+  age >= 0, 
+  age < 150,
+  if (driver_license == TRUE) age >= 16
+)
+```
+
+## Explicit validation rules:
+
+- Give a clear overview what the data must conform to.
+- Can be used to reason about.
+- Can be used to fix/correct data!
+- Find error, and when found correct it.
+
+### Note:
+
+- Manual fix is error prone, not reproducible and not feasible for large data sets.
+- Large rule set have (very) complex behavior, e.g. entangled rules: adjusting one value may 
+invalidate other rules.
+
+## 
+
+### `validate` tells us:
+
+- which **records** are **invalid**
+- which data **rules** are **violated**.
+
+### `errorlocate` tells us:
+
+- which field/*variable*(s) should be fixed to make a record valid.
+
+## Data example
+
+```{r}
+rules <- validator(
+  age >= 0, 
+  age < 150,
+  if (driver_license == TRUE) age >= 16
+)
+
+# invalid data
+car_owners <- data.frame(age = 160, driver_license = TRUE)
+```
+
+a) Which variable is incorrect? Why?
+
+## Data example
+
+```{r}
+rules <- validator(
+  age >= 0, 
+  age < 150,
+  if (driver_license == TRUE) age >= 16
+)
+
+# invalid data
+car_owners <- data.frame(age = 160, driver_license = TRUE)
+```
+
+Clearly `age` is incorrect, because it violates our constraint.
+
+## Data example 2
+
+```{r}
+rules <- validator(
+  age >= 0, 
+  age < 150,
+  if (driver_license == TRUE) age >= 16
+)
+
+car_owners <- data.frame(age = 10, driver_license = TRUE)
+```
+
+a) Which variable is incorrect? Why?
+
+## Data example 2
+
+```{r}
+rules <- validator(
+  age >= 0, 
+  age < 150,
+  if (driver_license == TRUE) age >= 16
+)
+
+car_owners <- data.frame(age = 10, driver_license = TRUE)
+```
+
+_It depends on the quality of `age` and `driver_license`_ we can add more weight to `age` if we think
+that variable has better quality.
+
+## Error localization
+
+> Error localization is a procedure that points out fields in a data set 
+that can be altered or imputed in such a way that all validation rules
+can be satisfied.
+
+
+## Assignment: 
+
+```{r}
+rules <- validator(
+  if (married == TRUE) age >= 16,
+  if (attends == "kindergarten") age <= 6
+) 
+
+persons <- data.frame( age     = 3
+                     , married = TRUE
+                     , attends = "kindergarten"
+                     )
+```
+
+a) check with `validate` which rules are violated.
+b) What should be changed to this record to "correct" it? Why? 
+
+## Feligi Holt formalism:
+
+> Find the minimal (weighted) number of variables that cause the invalidation of the data rules.
+
+Makes sense if is no further knowledge on the error mechanism! (But there are exceptions...)
+
+Implemented in `errorlocate` (second generation of `editrules`).
+
+## `errorlocate::locate_errors`
+
+```{r, eval=TRUE}
+locate_errors( data.frame( age  = 3
+                  , married = TRUE
+                  , attends = "kindergarten"
+                  )
+     , validator( if (married == TRUE) age >= 16
+                , if (attends == "kindergarten") age <= 6
+                )
+     )$errors
+```
+
+## Assignment with small examples
+
+a) Run `locate_errors` on `data.frame(age = 26, married = TRUE, attends= "kindergarten")`. What is the error?
+b) Run `locate_errors` on `data.frame(age = 15, married = TRUE, attends= "kindergarten")`. What is the error? Do you agree?
+
+## Removing errors
+
+- Detecting errors is very useful, but then what? 
+- Fixing philosophy is: 
+  - Find erroneuous values.
+  - Remove them (i.e. make them `NA`).
+  - Impute them with sensible values.
+  
+### Note
+We could also remove erroneous records completely, but often this result in _over-deletion_ and introduces a _bias_.
+
+## `errorlocate::replace_errors`
+
+- Locates errors and replaces them with `NA`.
+
+```{r, eval=TRUE}
+replace_errors( 
+    data.frame( age     = 3
+              , married = TRUE
+              , attends = "kindergarten"
+              )
+  , validator( if (married == TRUE) age >= 16
+             , if (attends == "kindergarten") age <= 6
+             )
+)
+```
+## Assigment
+
+
+## Internal workings:
+
+`errorlocate`:
+
+- translates error localization problem into a **mixed integer problem**, which
+is solved with `lpsolveAPI`.
+
+- contains a small framework for implementing your own error localization algorithms.
+
+
+## Pipe friendly
+
+The `replace_errors` function is pipe friendly:
+
+```{r}
+rules <- validator(age < 150)
+
+data_noerrors <- 
+  data.frame(age=160, driver_license = TRUE) %>% 
+  replace_errors(rules)
+
+errors_removed(data_noerrors) # contains errors removed
+```
+
+## Error localization
+
+> Error localization is a procedure that points out fields in a data set 
+that can be altered or imputed in such a way that all validation rules
+can be satisfied.
+
+## Find the error:
+
+```{r}
+library(validate)
+check_that( data.frame(age=160, driver_license=TRUE), 
+  age >= 0, 
+  age < 150,
+  if (driver_license == TRUE) age >= 16
+)
+```
+
+It is clear that `age` has an erroneous value, but for more complex rule sets
+it is less clear.
+
+## Multivariate example:
+
+```{r}
+check_that( data.frame( age     = 3
+                      , married = TRUE
+                      , attends = "kindergarten"
+                      )
+          , if (married == TRUE) age >= 16
+          , if (attends == "kindergarten") age <= 6
+          )
+```
+Ok, clear that this is a faulty record, but what is the error? 
+
+## Feligi Holt formalism:
+
+> Find the minimal (weighted) number of variables that cause the invalidation of the data rules.
+
+Makes sense! (But there are exceptions...)
+
+Implemented in `errorlocate` (second generation of `editrules`).
+
+## `errorlocate::locate_errors`
+
+```{r, eval=TRUE}
+locate_errors( data.frame( age     = 3
+                  , married = TRUE
+                  , attends = "kindergarten"
+                  )
+     , validator( if (married == TRUE) age >= 16
+                , if (attends == "kindergarten") age <= 6
+                )
+     )$errors
+```
+
+## `errorlocate::replace_errors`
+
+```{r, eval=TRUE}
+replace_errors( 
+    data.frame( age     = 3
+              , married = TRUE
+              , attends = "kindergarten"
+              )
+  , validator( if (married == TRUE) age >= 16
+             , if (attends == "kindergarten") age <= 6
+             )
+)
+```
+
+## Internal workings:
+
+`errorlocate`:
+
+- translates error localization problem into a **mixed integer problem**, which
+is solved with `lpsolveAPI`.
+
+- contains a small framework for implementing your own error localization algorithms.
+
+
+## Pipe friendly
+
+The `replace_errors` function is pipe friendly:
+
+```{r}
+rules <- validator(age < 150)
+
+data_noerrors <- 
+  data.frame(age=160, driver_license = TRUE) %>% 
+  replace_errors(rules)
+
+errors_removed(data_noerrors) # contains errors removed
+```

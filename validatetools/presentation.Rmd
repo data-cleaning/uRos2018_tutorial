@@ -177,8 +177,10 @@ is_infeasible(rules)
 
 ## {.plain}
 
-\hspace*{-2cm}
+\hspace*{-3cm}
+\begin{center}
 \includegraphics[height=1\paperheight]{img/keepcalm-and-resolve.png}
+\end{center}
 
 ## Conflict, and now?
 
@@ -197,10 +199,14 @@ is_contradicted_by(rules, "is_adult")
 
 ## Assignment Find the conflicting rules
 
-- Find which two rule(s) are causing the infeasibility in file "infeasible_rules.txt".
+a) Open the file "infeasible_rules.txt" (e.g. `file.edit("infeasible_rules.txt")`).
+Can you see which records are in conflict?
 
-```{r, eval = FALSE}
+b) Find which two rule(s) are causing the infeasibility in file "infeasible_rules.txt".
+
+```{r}
 rules <- validator(.file = "infeasible_rules.txt")
+is_infeasible(rules)
 # do your thing...
 ```
 
