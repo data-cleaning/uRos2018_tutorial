@@ -269,15 +269,29 @@ rules <- validator(
 c) use `locate_errors` to find some errors.
 d) use `replace_errors` to "fix" the data set.
 
-```{r, include = FALSE}
+## 
+
+```{r, eval = TRUE}
+
 data(retailers, package="validate")
+retailers <- retailers[c("other.rev", "total.rev", "turnover")]
 rules <- validator(
   to_pos = turnover >= 0
   , or_pos = other.rev >= 0
   , balance = turnover + other.rev == total.rev)
-rules
+confront(retailers, rules)
 
-locate_errors(retailers, rules)
+errors <- locate_errors(retailers, rules)$errors
+row_contains_error <- apply(errors, 1, any)
+w <- which(row_contains_error)
+errors[w,]
+```
+
+##
+
+```{r, eval=TRUE}
+retailers[w,c("other.rev", "total.rev", "turnover")]
+replace_errors(retailers[w,], rules)
 ```
 
 ## Internal workings:
