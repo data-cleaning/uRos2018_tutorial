@@ -25,7 +25,7 @@ install.packages("errorlocate")
 ## Finding errors in records.
 
 \begin{center}
-\includegraphics[width=\textwidthx]{fig/valuechain}
+\includegraphics[width=\textwidth]{fig/valuechain}
 \end{center}
 
 ## Validation rules?
@@ -52,8 +52,8 @@ rules <- validator(
 
 ### Note:
 
-- Manual fix is error prone, not reproducible and not feasible for large data sets.
-- Large rule set have (very) complex behavior, e.g. entangled rules: adjusting one value may 
+- Manual editing is error prone, not reproducible and not feasible for large data sets.
+- Large rule sets have (very) complex behavior, e.g. entangled rules: adjusting one value may 
 invalidate other rules.
 
 ## 
@@ -65,7 +65,7 @@ invalidate other rules.
 
 ### `errorlocate` tells us:
 
-- which field/*variable*(s) should be fixed to make a record valid.
+- which field/**variable**(s) should be fixed to make a record valid.
 
 ## Data example
 
@@ -173,8 +173,10 @@ locate_errors( data.frame( age  = 3
 
 ## Assignment with small examples
 
-a) Run `locate_errors` on `data.frame(age = 26, married = TRUE, attends= "kindergarten")`. What is the error?
-b) Run `locate_errors` on `data.frame(age = 15, married = TRUE, attends= "kindergarten")`. What is the error? Do you agree?
+a) Run `locate_errors` on `data.frame(age = 26, married = TRUE, attends= "kindergarten")`. What is the error? Look at the errors. 
+b) Run `locate_errors` on `data.frame(age = 15, married = TRUE, attends= "kindergarten")`. What is the error?
+Do you agree? Look at the errors. 
+c) Run `locate_errors` with the `rules_dl` (!) on `data.frame(age=10,driver_license = TRUE)` data set. Express more confidence in the variable `age` by supplying a `weight` to `locate_errors` (`weight = c("age" = 2, "driver_license" = 1)`)
 
 ## Removing errors
 
@@ -202,99 +204,22 @@ replace_errors(
              )
 )
 ```
-## Assigment
+## Assignment
 
+a) Use the data set `retailers` from validation.
+b) Use validate to find out which records are `faulty`
+c) use `locate_errors` to find some errors.
+d) use `replace_errors` to "fix" the data set.
 
-## Internal workings:
+```{r, include = FALSE}
+data(retailers, package="validate")
+rules <- validator(
+  to_pos = turnover >= 0
+  , or_pos = other.rev >= 0
+  , balance = turnover + other.rev == total.rev)
+rules
 
-`errorlocate`:
-
-- translates error localization problem into a **mixed integer problem**, which
-is solved with `lpsolveAPI`.
-
-- contains a small framework for implementing your own error localization algorithms.
-
-
-## Pipe friendly
-
-The `replace_errors` function is pipe friendly:
-
-```{r}
-rules <- validator(age < 150)
-
-data_noerrors <- 
-  data.frame(age=160, driver_license = TRUE) %>% 
-  replace_errors(rules)
-
-errors_removed(data_noerrors) # contains errors removed
-```
-
-## Error localization
-
-> Error localization is a procedure that points out fields in a data set 
-that can be altered or imputed in such a way that all validation rules
-can be satisfied.
-
-## Find the error:
-
-```{r}
-library(validate)
-check_that( data.frame(age=160, driver_license=TRUE), 
-  age >= 0, 
-  age < 150,
-  if (driver_license == TRUE) age >= 16
-)
-```
-
-It is clear that `age` has an erroneous value, but for more complex rule sets
-it is less clear.
-
-## Multivariate example:
-
-```{r}
-check_that( data.frame( age     = 3
-                      , married = TRUE
-                      , attends = "kindergarten"
-                      )
-          , if (married == TRUE) age >= 16
-          , if (attends == "kindergarten") age <= 6
-          )
-```
-Ok, clear that this is a faulty record, but what is the error? 
-
-## Feligi Holt formalism:
-
-> Find the minimal (weighted) number of variables that cause the invalidation of the data rules.
-
-Makes sense! (But there are exceptions...)
-
-Implemented in `errorlocate` (second generation of `editrules`).
-
-## `errorlocate::locate_errors`
-
-```{r, eval=TRUE}
-locate_errors( data.frame( age     = 3
-                  , married = TRUE
-                  , attends = "kindergarten"
-                  )
-     , validator( if (married == TRUE) age >= 16
-                , if (attends == "kindergarten") age <= 6
-                )
-     )$errors
-```
-
-## `errorlocate::replace_errors`
-
-```{r, eval=TRUE}
-replace_errors( 
-    data.frame( age     = 3
-              , married = TRUE
-              , attends = "kindergarten"
-              )
-  , validator( if (married == TRUE) age >= 16
-             , if (attends == "kindergarten") age <= 6
-             )
-)
+locate_errors(retailers, rules)
 ```
 
 ## Internal workings:
@@ -320,3 +245,4 @@ data_noerrors <-
 
 errors_removed(data_noerrors) # contains errors removed
 ```
+
