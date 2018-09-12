@@ -2,9 +2,13 @@
 
 # R packages used
 
+Please install the following packages for the tutorial:
+
 ```r
 install.packages(c("validate", "errorlocate", "simputation", "validatetools"),dependencies = TRUE))
 ```
+
+## Presentations and data:
 
 validation:
 
