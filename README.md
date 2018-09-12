@@ -6,9 +6,13 @@
 install.packages(c("validate", "errorlocate", "simputation", "validatetools"),dependencies = TRUE))
 ```
 
+validation:
+
+- [validation presentation](./validation/presentation.pdf)
+
 simputation:
 
-- [simputation presentation](./validation/presentation.pdf)
+- [simputation presentation](./simputation/presentation.pdf)
 - [irisNA.csv](https://raw.githubusercontent.com/data-cleaning/uRos2018_tutorial/master/simputation/irisNA.csv)
 
 errorlocate:
