@@ -10,20 +10,21 @@ install.packages(c("validate", "errorlocate", "simputation", "validatetools"),de
 
 ## Presentations and data:
 
-validation:
+### 1. validation:
 
 - [validation presentation](./validation/presentation.pdf)
 
-simputation:
 
-- [simputation presentation](./simputation/presentation.pdf)
-- [irisNA.csv](https://raw.githubusercontent.com/data-cleaning/uRos2018_tutorial/master/simputation/irisNA.csv)
-
-errorlocate:
+### 2. errorlocate:
 
 - [errorlocate presentation](./errorlocate/presentation.pdf)
 
-validatetools: 
+### 3. validatetools: 
 
 - [validatetools/presentation.pdf](./validatetools/presentation.pdf)
 - [validatetools/infeasible_rules.txt](https://raw.githubusercontent.com/data-cleaning/uRos2018_tutorial/master/validatetools/infeasible_rules.txt) (used in assignment)
+
+### 4. simputation:
+
+- [simputation presentation](./simputation/presentation.pdf)
+- [irisNA.csv](https://raw.githubusercontent.com/data-cleaning/uRos2018_tutorial/master/simputation/irisNA.csv)
