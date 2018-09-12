@@ -80,7 +80,7 @@ rules <- validator(
 car_owners <- data.frame(age = 160, driver_license = TRUE)
 ```
 
-a) Which variable is incorrect? Why?
+Question: _Which variable (likely) is  incorrect? Why?_
 
 ## Data example
 
@@ -95,7 +95,7 @@ rules <- validator(
 car_owners <- data.frame(age = 160, driver_license = TRUE)
 ```
 
-Clearly `age` is incorrect, because it violates our constraint.
+Clearly `age` is incorrect, because it violates the second constraint.
 
 ## Data example 2
 
@@ -109,12 +109,12 @@ rules <- validator(
 car_owners <- data.frame(age = 10, driver_license = TRUE)
 ```
 
-a) Which variable is incorrect? Why?
+Question: _Which variable (likely) is  incorrect? Why?_
 
 ## Data example 2
 
 ```{r}
-rules <- validator(
+rules_dl <- validator(
   age >= 0, 
   age < 150,
   if (driver_license == TRUE) age >= 16
@@ -123,8 +123,8 @@ rules <- validator(
 car_owners <- data.frame(age = 10, driver_license = TRUE)
 ```
 
-_It depends on the quality of `age` and `driver_license`_ we can add more weight to `age` if we think
-that variable has better quality.
+_It depends on the quality of `age` and `driver_license`. We can add more weight to `age` if we think
+that variable has better quality._
 
 ## Error localization
 
@@ -150,13 +150,46 @@ persons <- data.frame( age     = 3
 a) check with `validate` which rules are violated.
 b) What should be changed to this record to "correct" it? Why? 
 
-## Feligi Holt formalism:
+## Feligi Holt (FH) formalism:
 
 > Find the minimal (weighted) number of variables that cause the invalidation of the data rules.
 
-Makes sense if is no further knowledge on the error mechanism! (But there are exceptions...)
+### 
 
-Implemented in `errorlocate` (second generation of `editrules`).
+Makes sense if no further knowledge on the error mechanism is available! 
+
+R package `errorlocate` (second generation of `editrules`) implements FH.
+
+## Feligi Holt (FH) formalism:
+
+But there are exceptions...
+
+  - In balance sheets, swapping variables (2 edits) sometimes makes more sense then adjusting one value (1 edit). (see R package:`deducorrect`).
+
+  - In some data,  spreading a surplus or shortage on a variable over many variables is sensible. (see R package: `rspa`).
+
+## `errorlocate`
+
+- R-package that implements FH.
+- Is extensible (you can plug in your own detection stuff)
+- provides:
+  
+    - `locate_errors`
+    - `replace_errors`
+    - R5 classes to add your own stuff.
+
+## `errorlocate::locate_errors`
+
+```{r, eval=TRUE}
+locate_errors( data.frame( age  = 3
+                  , married = TRUE
+                  , attends = "kindergarten"
+                  )
+     , validator( if (married == TRUE) age >= 16
+                , if (attends == "kindergarten") age <= 6
+                )
+     )
+```
 
 ## `errorlocate::locate_errors`
 
@@ -171,12 +204,28 @@ locate_errors( data.frame( age  = 3
      )$errors
 ```
 
-## Assignment with small examples
+## Assignment (small examples)
 
-a) Run `locate_errors` on `data.frame(age = 26, married = TRUE, attends= "kindergarten")`. What is the error? Look at the errors. 
-b) Run `locate_errors` on `data.frame(age = 15, married = TRUE, attends= "kindergarten")`. What is the error?
-Do you agree? Look at the errors. 
-c) Run `locate_errors` with the `rules_dl` (!) on `data.frame(age=10,driver_license = TRUE)` data set. Express more confidence in the variable `age` by supplying a `weight` to `locate_errors` (`weight = c("age" = 2, "driver_license" = 1)`)
+a) Find the error with `locate_errors`: 
+
+```
+data.frame( age = 26, married = TRUE
+          , attends= "kindergarten")
+```
+
+b) Find the error with `locate_errors`: 
+
+```
+data.frame( age = 15, married = TRUE
+          , attends= "kindergarten")
+```
+Do you agree?
+
+c) Run `locate_errors` with the `rules_dl` (!) and add a weight of 2 to `age`.
+
+```
+data.frame(age=10,driver_license = TRUE)
+``` 
 
 ## Removing errors
 
