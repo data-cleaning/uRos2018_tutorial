@@ -255,8 +255,17 @@ replace_errors(
 ```
 ## Assignment
 
-a) Use the data set `retailers` from validation.
-b) Use validate to find out which records are `faulty`
+a) Use the data set `retailers` from package `validate`.
+b) Use validate to find out which records are `faulty` using the rule set
+
+```{r, echo = TRUE, eval=FALSE}
+rules <- validator(
+  to_pos = turnover >= 0
+  , or_pos = other.rev >= 0
+  , balance = turnover + other.rev == total.rev)
+
+```
+
 c) use `locate_errors` to find some errors.
 d) use `replace_errors` to "fix" the data set.
 
