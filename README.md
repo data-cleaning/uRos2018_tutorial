@@ -1,5 +1,11 @@
 # Material for uRos 2018 tutorial
 
+# R packages used
+
+```r
+install.packages(c("validate", "errorlocate", "simputation", "validatetools"),dependencies = TRUE))
+```
+
 simputation:
 
 - [simputation presentation](./validation/presentation.pdf)
